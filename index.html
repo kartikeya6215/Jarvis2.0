@@ -231,7 +231,7 @@
         calculator: "calc:",
         facebook: "https://facebook.com",
         instagram: "https://instagram.com",
-        whatsapp: "https://web.whatsapp.com",
+        whatsapp: "https://whatsapp.com",
         twitter: "https://twitter.com",
         chrome: "googlechrome://",
         music: "https://music.youtube.com",
@@ -240,7 +240,7 @@
         news: "https://news.google.com"
       },
       webFallbacks: {
-        youtube: "https://youtube.com",
+        /*youtube: "https://youtube.com",
         music: "https://music.youtube.com",
         news: "https://news.google.com",
         maps: "https://maps.google.com",
@@ -248,7 +248,7 @@
         whatsapp: "https://web.whatsapp.com",
         facebook: "https://facebook.com",
         instagram: "https://instagram.com",
-        twitter: "https://twitter.com"
+        twitter: "https://twitter.com"*/
       }
     };
 
@@ -414,16 +414,52 @@
     }
 
     // Enhanced app opening
+     // Enhanced app opening with advanced solution
     function openAppOrWebsite(appKey) {
       appOpened = true;
-      const url = config.appDeepLinks[appKey] || config.webFallbacks[appKey];
+      const url = config.appDeepLinks[appKey];
       
       if (!url) {
         showError(`No configuration found for ${appKey}`);
         return;
       }
-      
-      window.location.href = url;
+
+      // Advanced solution to prevent duplicate opening
+      if (url.startsWith('http')) {
+        // For web links, open in new tab
+        const newWindow = window.open(url, '_blank');
+        
+        // If popup was blocked, fallback to current tab
+        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+          window.location.href = url;
+        }
+      } else {
+        // For app deep links
+        try {
+          window.location.href = url;
+          // Set timeout to detect if app didn't open
+          setTimeout(() => {
+            if (!document.hidden) {
+              // If still on page, try web version if available
+              const webUrl = getWebAlternative(appKey);
+              if (webUrl) window.location.href = webUrl;
+            }
+          }, 1000);
+        } catch (e) {
+          const webUrl = getWebAlternative(appKey);
+          if (webUrl) window.location.href = webUrl;
+        }
+      }
+    }
+
+    // Helper function for web alternatives
+    function getWebAlternative(appKey) {
+      const alternatives = {
+        whatsapp: "https://web.whatsapp.com",
+        instagram: "https://instagram.com",
+        facebook: "https://facebook.com"
+      };
+      return alternatives[appKey];
     }
 
     // Enhanced processCommand()
