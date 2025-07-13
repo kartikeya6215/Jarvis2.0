@@ -200,7 +200,7 @@
       <ul>
         <li>"Open YouTube/Gmail"</li>
         <li>"Open Phone/Camera/Gallery"</li>
-        <li>"Open Facebook/Instagram"</li>
+        <li>"Open Facebook/Instagram/WhatsApp"</li>
         <li>"Play music/lofi"</li>
         <li>"What's the time?"</li>
         <li>"Show me the news"</li>
@@ -224,27 +224,20 @@
         pitch: 0.9
       },
       appDeepLinks: {
-        // Native app deep links
-        youtube: "vnd.youtube://",
+        youtube: "https://youtube.com",
         phone: "tel:",
-        contacts: "content://contacts/people/",
         camera: "android.media.action.IMAGE_CAPTURE",
         gallery: "content://media/external/images/media",
-        settings: "android.settings.SETTINGS",
         calculator: "calc:",
-        clock: "clock:",
-        messages: "sms:",
-        facebook: "fb://",
-        instagram: "instagram://",
-        twitter: "twitter://",
-        whatsapp: "whatsapp://",
+        facebook: "https://facebook.com",
+        instagram: "https://instagram.com",
+        whatsapp: "https://web.whatsapp.com",
+        twitter: "https://twitter.com",
         chrome: "googlechrome://",
-        photos: "googlephotos://",
-        drive: "googledrive://",
-        playstore: "market://",
-        music: "com.google.android.music://",
-        maps: "google.navigation://",
-        gmail: "googlegmail://"
+        music: "https://music.youtube.com",
+        maps: "https://maps.google.com",
+        gmail: "https://mail.google.com",
+        news: "https://news.google.com"
       },
       webFallbacks: {
         youtube: "https://youtube.com",
@@ -272,7 +265,7 @@
     let isInitialized = false;
     let speechSynthesis = window.speechSynthesis;
     let maleVoice;
-    let appOpened = false; // Track if app was opened
+    let appOpened = false;
 
     // Initialize JARVIS
     async function initializeJarvis() {
@@ -368,7 +361,7 @@
         recognition.lang = 'en-IN';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
-        recognition.continuous = false; // Single utterance mode
+        recognition.continuous = false;
         
         recognition.onstart = () => {
           isListening = true;
@@ -382,14 +375,14 @@
         
         recognition.onresult = (event) => {
           const command = event.results[0][0].transcript;
-          if (command.trim().length > 2) { // Minimum 3 characters
+          if (command.trim().length > 2) {
             addMessage("You", command);
             processCommand(command);
           }
         };
         
         recognition.onerror = (event) => {
-          if (event.error !== 'no-speech') { // Ignore background noise
+          if (event.error !== 'no-speech') {
             showError(`Error: ${event.error}`);
           }
           stopListening();
@@ -397,7 +390,7 @@
         
         recognition.onend = () => {
           if (isListening && !appOpened) {
-            setTimeout(startListening, 1000); // Restart with delay
+            setTimeout(startListening, 1000);
           }
         };
         
@@ -420,33 +413,17 @@
       addMessage("System", "Listening stopped");
     }
 
-    // Enhanced app opening with proper fallback
+    // Enhanced app opening
     function openAppOrWebsite(appKey) {
       appOpened = true;
-      const deepLink = config.appDeepLinks[appKey];
-      const webUrl = config.webFallbacks[appKey];
+      const url = config.appDeepLinks[appKey] || config.webFallbacks[appKey];
       
-      if (!deepLink && !webUrl) {
+      if (!url) {
         showError(`No configuration found for ${appKey}`);
         return;
       }
       
-      // Only try to open web version if native fails
-      if (deepLink) {
-        try {
-          window.location.href = deepLink;
-          // Set timeout to check if we're still on the page
-          setTimeout(() => {
-            if (!document.hidden && webUrl) {
-              window.location.href = webUrl;
-            }
-          }, 1000);
-        } catch (e) {
-          if (webUrl) window.location.href = webUrl;
-        }
-      } else if (webUrl) {
-        window.location.href = webUrl;
-      }
+      window.location.href = url;
     }
 
     // Enhanced processCommand()
@@ -499,6 +476,18 @@
         speak(response);
         openAppOrWebsite('whatsapp');
       }
+      else if (lowerCommand.includes('instagram')) {
+        response = "Opening Instagram, Sir.";
+        addMessage(config.assistantName, response);
+        speak(response);
+        openAppOrWebsite('instagram');
+      }
+      else if (lowerCommand.includes('facebook')) {
+        response = "Opening Facebook, Sir.";
+        addMessage(config.assistantName, response);
+        speak(response);
+        openAppOrWebsite('facebook');
+      }
       else if (lowerCommand.includes('time') || lowerCommand.includes('samay')) {
         const now = new Date();
         response = `It's ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
@@ -522,19 +511,41 @@
         response = `Searching for ${query.trim() || 'that'}, Sir.`;
         addMessage(config.assistantName, response);
         speak(response);
-        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
       }
       else if (lowerCommand.includes('weather') || lowerCommand.includes('mausam')) {
         response = "Checking weather, Sir.";
         addMessage(config.assistantName, response);
         speak(response);
-        window.location.href = "https://www.google.com/search?q=weather";
+        window.open("https://www.google.com/search?q=weather", '_blank');
       }
       else if (lowerCommand.includes('stop') || lowerCommand.includes('band')) {
         response = "Standing by, Sir.";
         addMessage(config.assistantName, response);
         speak(response);
         stopListening();
+      }
+      else if (lowerCommand.includes('joke') || lowerCommand.includes('hasya')) {
+        const jokes = [
+          "Why don't scientists trust atoms? Because they make up everything!",
+          "Did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
+          "Why don't skeletons fight each other? They don't have the guts!"
+        ];
+        const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+        response = randomJoke;
+        addMessage(config.assistantName, response);
+        speak(response);
+      }
+      else if (lowerCommand.includes('calculate') || lowerCommand.includes('compute')) {
+        const mathProblem = command.split('calculate')[1] || command.split('compute')[1] || "";
+        try {
+          const result = eval(mathProblem);
+          response = `The result is ${result}`;
+        } catch {
+          response = "I couldn't solve that math problem, Sir.";
+        }
+        addMessage(config.assistantName, response);
+        speak(response);
       }
       else {
         response = "I didn't understand that command, Sir.";
