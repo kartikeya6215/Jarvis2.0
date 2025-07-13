@@ -46,16 +46,6 @@
       text-align: center;
     }
     
-    .privacy-badge {
-      background: rgba(63, 185, 80, 0.2);
-      border: 1px solid var(--jarvis-green);
-      border-radius: 20px;
-      padding: 8px 15px;
-      display: inline-block;
-      margin: 10px 0;
-      font-size: 0.8rem;
-    }
-    
     #response-container {
       margin: 25px 0;
       background-color: #161b22;
@@ -133,14 +123,6 @@
       background-color: var(--jarvis-red);
     }
     
-    #authButton {
-      background-color: var(--jarvis-blue);
-    }
-    
-    #logoutButton {
-      background-color: var(--jarvis-red);
-    }
-    
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 rgba(255, 123, 114, 0.7); }
       70% { box-shadow: 0 0 0 12px rgba(255, 123, 114, 0); }
@@ -196,24 +178,20 @@
 <body>
   <div class="container">
     <h1>JARVIS Pro</h1>
-    <p style="text-align: center;">Your complete AI assistant with voice authentication</p>
-    <div class="privacy-badge">🔒 All data stored locally | Voiceprint secured</div>
+    <p style="text-align: center;">Your complete AI assistant. Speak naturally in English or Hinglish.</p>
     
     <div id="response-container">
-      <div class="message jarvis-message">JARVIS: Initializing secure systems...</div>
+      <div class="message jarvis-message">JARVIS: Initializing systems...</div>
     </div>
     
-    <div class="status" id="status">Status: Loading...</div>
+    <div class="status" id="status">Status: Ready</div>
     
     <div class="controls">
       <button id="micButton" onclick="toggleListening()">
         <span id="micIcon">🎤</span> <span id="micText">Start Listening</span>
       </button>
-      <button id="authButton" onclick="verifyIdentity()">
-        🔐 Verify Identity
-      </button>
-      <button id="logoutButton" onclick="logout()">
-        🚪 Log Out
+      <button onclick="resetConversation()">
+        🔄 Reset Conversation
       </button>
     </div>
     
@@ -236,20 +214,17 @@
   </div>
 
   <script>
-    // Enhanced System Configuration with Voice Authentication
+    // Enhanced System Configuration
     const config = {
-      userName: localStorage.getItem('jarvis-user-name') || "Sir",
+      userName: "Sir",
       assistantName: "JARVIS Pro",
-      encryptionKey: localStorage.getItem('jarvis-encryption-key') || 'jarvis-pro-secure-key-2025',
-      voiceProfile: JSON.parse(localStorage.getItem('jarvis-voice-profile')) || null,
-      isAuthenticated: localStorage.getItem('jarvis-authenticated') === 'true' || false,
-      securityLevel: localStorage.getItem('jarvis-security-level') || "strict",
       defaultVoice: {
         lang: 'en-IN',
         rate: 1.0,
         pitch: 0.9
       },
       appDeepLinks: {
+        // Native app deep links
         youtube: "vnd.youtube://",
         phone: "tel:",
         contacts: "content://contacts/people/",
@@ -290,26 +265,25 @@
     const micButton = document.getElementById('micButton');
     const micIcon = document.getElementById('micIcon');
     const micText = document.getElementById('micText');
-    const authButton = document.getElementById('authButton');
-    const logoutButton = document.getElementById('logoutButton');
-
+    
     // System State
     let recognition;
     let isListening = false;
     let isInitialized = false;
     let speechSynthesis = window.speechSynthesis;
     let maleVoice;
+    let appOpened = false; // Track if app was opened
 
     // Initialize JARVIS
     async function initializeJarvis() {
-      addMessage(config.assistantName, "Initializing secure systems...");
+      addMessage(config.assistantName, "Initializing all systems...");
       
       // Load voices
       await loadVoices();
       
       // Check for speech recognition support
       if (!('webkitSpeechRecognition' in window)) {
-        showError("Speech recognition not supported in your browser. Please use Chrome or Edge.");
+        showError("Speech recognition not supported in your browser");
         return false;
       }
       
@@ -322,110 +296,13 @@
         return false;
       }
       
-      // Initialize encryption key if not exists
-      if (!localStorage.getItem('jarvis-encryption-key')) {
-        localStorage.setItem('jarvis-encryption-key', config.encryptionKey);
-      }
-      
-      // Initialize voice profile if not exists
-      if (!localStorage.getItem('jarvis-voice-profile')) {
-        createVoiceProfile();
-      } else {
-        config.voiceProfile = JSON.parse(localStorage.getItem('jarvis-voice-profile'));
-      }
-      
       isInitialized = true;
-      updateStatus();
-      
-      if (config.isAuthenticated) {
-        addMessage(config.assistantName, `Welcome back, ${config.userName}. Voiceprint verified and ready.`);
-        speak(`Welcome back, ${config.userName}. Voiceprint verified and ready.`);
-      } else {
-        addMessage(config.assistantName, `Secure systems online. Please verify your voiceprint, ${config.userName}.`);
-        speak(`Secure systems online. Please verify your voiceprint, ${config.userName}.`);
-      }
-      
+      addMessage(config.assistantName, `Systems online. How may I assist you today, ${config.userName}?`);
+      speak(`Systems online. How may I assist you today, ${config.userName}?`);
       return true;
     }
 
-    // Voiceprint authentication
-    async function verifyIdentity() {
-      if (config.voiceProfile) {
-        addMessage("System", "Please say: 'My voice is my password' to authenticate");
-        speak("Please say: My voice is my password to authenticate");
-        
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const authRecognition = new SpeechRecognition();
-        authRecognition.lang = 'en-IN';
-        authRecognition.interimResults = false;
-        authRecognition.maxAlternatives = 1;
-        
-        authRecognition.onresult = (event) => {
-          const spokenPhrase = event.results[0][0].transcript.toLowerCase();
-          if (spokenPhrase.includes("my voice is my password")) {
-            config.isAuthenticated = true;
-            localStorage.setItem('jarvis-authenticated', 'true');
-            updateStatus();
-            addMessage("System", "Voiceprint verified. Authentication successful.");
-            speak("Authentication successful");
-          } else {
-            addMessage("System", "Authentication failed. Voiceprint mismatch.");
-            speak("Authentication failed");
-          }
-        };
-        
-        authRecognition.onerror = (event) => showError(`Auth error: ${event.error}`);
-        authRecognition.start();
-      } else {
-        addMessage("System", "No voiceprint registered. Please create one first.");
-        speak("No voiceprint registered. Please create one first.");
-      }
-    }
-
-    // Create voice profile
-    function createVoiceProfile() {
-      addMessage("System", "Creating voiceprint. Please say: 'My voice is my password' three times.");
-      speak("Creating voiceprint. Please say: My voice is my password three times.");
-      
-      config.voiceProfile = {
-        created: new Date().toISOString(),
-        phrase: "my voice is my password"
-      };
-      localStorage.setItem('jarvis-voice-profile', JSON.stringify(config.voiceProfile));
-      addMessage("System", "Voiceprint created successfully.");
-      speak("Voiceprint created successfully.");
-      updateStatus();
-    }
-
-    // Logout function
-    function logout() {
-      config.isAuthenticated = false;
-      localStorage.removeItem('jarvis-authenticated');
-      updateStatus();
-      addMessage("System", "Logged out successfully. Voice verification required for next session.");
-      speak("Logged out successfully");
-    }
-
-    // Update status display
-    function updateStatus() {
-      let status = "Ready";
-      if (config.isAuthenticated) {
-        status += " | Voiceprint: Verified";
-        authButton.style.display = 'none';
-        logoutButton.style.display = 'flex';
-      } else if (config.voiceProfile) {
-        status += " | Voiceprint: Registered";
-        authButton.style.display = 'flex';
-        logoutButton.style.display = 'none';
-      } else {
-        status += " | Voiceprint: Not registered";
-        authButton.style.display = 'flex';
-        logoutButton.style.display = 'none';
-      }
-      statusElement.textContent = `Status: ${status}`;
-    }
-
-    // Load voices
+    // Load available voices
     function loadVoices() {
       return new Promise((resolve) => {
         const voices = speechSynthesis.getVoices();
@@ -457,7 +334,7 @@
       }
       
       utterance.onend = () => {
-        if (isListening) {
+        if (isListening && !appOpened) {
           setTimeout(startListening, 500);
         }
       };
@@ -472,12 +349,6 @@
         if (!initialized) return;
       }
       
-      if (config.securityLevel === "strict" && !config.isAuthenticated) {
-        addMessage("System", "Authentication required for strict security mode.");
-        speak("Authentication required. Please verify your identity first.");
-        return;
-      }
-      
       if (isListening) {
         stopListening();
       } else {
@@ -485,7 +356,7 @@
       }
     }
 
-    // Start speech recognition
+    // Start speech recognition (Optimized Version)
     function startListening() {
       try {
         if (recognition) {
@@ -493,75 +364,92 @@
           recognition = null;
         }
         
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
+        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = 'en-IN';
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
-        recognition.continuous = true;
+        recognition.continuous = false; // Single utterance mode
         
         recognition.onstart = () => {
           isListening = true;
+          appOpened = false;
           micButton.classList.add('listening');
           micIcon.textContent = '🛑';
           micText.textContent = 'Listening...';
-          statusElement.textContent = config.isAuthenticated 
-            ? 'Status: Listening (Authenticated)' 
-            : 'Status: Listening (Standard Mode)';
-          addMessage("System", "Listening for your command...");
+          statusElement.textContent = 'Status: Active (Speak Now)';
+          addMessage("System", "Ready for your command...");
         };
         
         recognition.onresult = (event) => {
-          const command = event.results[event.results.length - 1][0].transcript.trim();
-          if (command.length >= 3) {
+          const command = event.results[0][0].transcript;
+          if (command.trim().length > 2) { // Minimum 3 characters
             addMessage("You", command);
             processCommand(command);
-          } else {
-            addMessage("System", "Command too short, please speak clearly.");
           }
         };
         
         recognition.onerror = (event) => {
-          console.error('Recognition error:', event.error);
-          if (!['no-speech', 'aborted'].includes(event.error)) {
-            showError(`Recognition error: ${event.error}. Please check microphone or try again.`);
+          if (event.error !== 'no-speech') { // Ignore background noise
+            showError(`Error: ${event.error}`);
           }
           stopListening();
         };
         
         recognition.onend = () => {
-          console.log('Recognition ended');
-          if (isListening) {
-            recognition.start();
+          if (isListening && !appOpened) {
+            setTimeout(startListening, 1000); // Restart with delay
           }
         };
         
         recognition.start();
       } catch (error) {
-        console.error('Start listening error:', error);
-        showError(`Failed to start recognition: ${error.message}.`);
-        stopListening();
+        showError(`Failed to start recognition: ${error}`);
       }
     }
 
     // Stop speech recognition
     function stopListening() {
       if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {
-          console.error('Stop error:', e);
-        }
-        recognition = null;
+        recognition.stop();
       }
       isListening = false;
       micButton.classList.remove('listening');
       micIcon.textContent = '🎤';
       micText.textContent = 'Start Listening';
-      updateStatus();
+      statusElement.textContent = 'Status: Ready';
+      addMessage("System", "Listening stopped");
     }
 
-    // Process commands
+    // Enhanced app opening with proper fallback
+    function openAppOrWebsite(appKey) {
+      appOpened = true;
+      const deepLink = config.appDeepLinks[appKey];
+      const webUrl = config.webFallbacks[appKey];
+      
+      if (!deepLink && !webUrl) {
+        showError(`No configuration found for ${appKey}`);
+        return;
+      }
+      
+      // Only try to open web version if native fails
+      if (deepLink) {
+        try {
+          window.location.href = deepLink;
+          // Set timeout to check if we're still on the page
+          setTimeout(() => {
+            if (!document.hidden && webUrl) {
+              window.location.href = webUrl;
+            }
+          }, 1000);
+        } catch (e) {
+          if (webUrl) window.location.href = webUrl;
+        }
+      } else if (webUrl) {
+        window.location.href = webUrl;
+      }
+    }
+
+    // Enhanced processCommand()
     function processCommand(command) {
       const lowerCommand = command.toLowerCase();
       let response = "";
@@ -657,38 +545,6 @@
       stopListening();
     }
 
-    // Enhanced app opening with proper fallback
-    function openAppOrWebsite(appKey) {
-      const deepLink = config.appDeepLinks[appKey];
-      const webUrl = config.webFallbacks[appKey];
-      
-      if (!deepLink && !webUrl) {
-        showError(`No configuration found for ${appKey}`);
-        return;
-      }
-      
-      // Try native app first
-      if (deepLink) {
-        try {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = deepLink;
-          document.body.appendChild(iframe);
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            // Check if we're still on the page (app didn't open)
-            if (!document.hidden && webUrl) {
-              window.location.href = webUrl;
-            }
-          }, 500);
-        } catch (e) {
-          if (webUrl) window.location.href = webUrl;
-        }
-      } else if (webUrl) {
-        window.location.href = webUrl;
-      }
-    }
-
     // UI Helpers
     function addMessage(sender, text) {
       const messageDiv = document.createElement('div');
@@ -728,13 +584,7 @@
       if (window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
         showError("For full functionality, please use HTTPS or localhost");
       }
-      
-      // Load CryptoJS first
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js';
-      script.onload = initializeJarvis;
-      script.onerror = () => showError("Failed to load encryption library");
-      document.head.appendChild(script);
+      initializeJarvis();
     });
   </script>
 </body>
